@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 import scrapy
 import json
@@ -9,7 +8,8 @@ with open("C:/Users/Sam/AppData/Local/Programs/Python/Python36/depop/depop/tags.
     tags = json.load(f)
 
 
-class SolditemsSpider(scrapy.Spider):
+class SoldItemsSpider(scrapy.Spider):
+
     name = 'soldItems'
     allowed_domains = ['depop.com', 'webapi.depop.com']
     start_urls = ['https://www.depop.com/ollyt155/']
@@ -19,10 +19,8 @@ class SolditemsSpider(scrapy.Spider):
         self.currentID = None
         self.itemsCollected = 0
         self.profilesCollected = 0
-
         self.rowsInserted = 0;
         self.rowsUpdated = 0;
-
         try:
             with open("sold.json") as f:
                 self.results = json.load(f)
@@ -30,8 +28,6 @@ class SolditemsSpider(scrapy.Spider):
             self.results = {}
 
     def parse(self, response):
-
-
         # Gets the meta data from the bottom of the page
         meta = json.loads(response.css("script#__NEXT_DATA__::text").get())
 
@@ -39,9 +35,6 @@ class SolditemsSpider(scrapy.Spider):
         id = meta['props']['pageProps']['shop']['id']
         username = meta['props']['pageProps']['shop']['username']
 
-        #print("Current Profile = {}".format(username))
-        #print("Total profiles collected: {}".format(self.profilesCollected))
-        #print("Total profiles scanned: {}".format(self.itemsCollected))
         self.currentID = id
 
         # Get the URL of the API that returns following
@@ -50,42 +43,30 @@ class SolditemsSpider(scrapy.Spider):
         # Grab user link from lists of following
         yield scrapy.Request(url, callback=self.getFollowerLinks)
 
-        #print("Scanned profile {}".format(self.currentID))
-
-
-        #if len(self.urls) > 0:
-            #yield response.follow(self.url.pop(), callback = self.parse)
-
-
-
     def getFollowerLinks(self, response):
-        #print(" ... enqueueing profile connections")
-        jsonresponse = json.loads(response.body_as_unicode())
-        for item in jsonresponse['objects']:
+        json_response = json.loads(response.body_as_unicode())
+
+        for item in json_response['objects']:
             username = item['username']
-            profileLink = "https://www.depop.com/{}/".format(username)
+            profile_link = "https://www.depop.com/{}/".format(username)
             url = "https://webapi.depop.com/api/v1/shop/{}/products?limit=200".format(str(self.currentID))
             self.profilesCollected += 1
-            yield scrapy.Request(url, callback=self.getItemLinks)
-            #if profileLink not in self.urls:
-            #    self.urls.append(profileLink)
-            #print(len(self.urls))
-            yield scrapy.Request(profileLink, callback=self.parse)
-
+            #yield scrapy.Request(url, callback=self.getItemLinks)
+            yield scrapy.Request(profile_link, callback=self.parse)
 
         url = "https://webapi.depop.com/api/v1/shop/{}/products?limit=200".format(str(self.currentID))
         yield scrapy.Request(url, callback=self.getItemLinks)
 
     def getItemLinks(self, response):
         self.itemsCollected += 1
-        #print(" ... iterating through items on page")
-        jsonresponse = json.loads(response.body_as_unicode())
-        for item in jsonresponse['products']:
+        json_response = json.loads(response.body_as_unicode())
+        for item in json_response['products']:
             price = item['price']
 
-            # Only scan products in GBP and that are sold
+            # Only scan products in GBP
             if price['currency_name'] == 'GBP':
-                # Get URL of sold item
+                
+                # Get URL of item
                 url_item = "https://www.depop.com/products/" + item['slug'] + "/"
 
                 # Scan that page
@@ -116,7 +97,6 @@ class SolditemsSpider(scrapy.Spider):
 
             price_amount = meta['props']['initialReduxState']['product']['product']['price']['price_amount']
             output['price_amount'] = price_amount
-
 
             shipping_cost = meta['props']['initialReduxState']['product']['product']['price']['national_shipping_cost']
             output['shipping_cost'] = shipping_cost
@@ -160,8 +140,6 @@ class SolditemsSpider(scrapy.Spider):
             #self.results[id]['size'] = size
             output['size'] = size
 
-
-
             # SAVE RESULTS
             url = 'http://localhost/saveItem.php'
             post_data = output
@@ -193,7 +171,6 @@ def getAttr(desc, tags):
             # print("{} = None\n Original Desc: \"{}\"\n Formatted Desc: \"{}\"\n".format(attr, repr(org), desc))
         attributes[attr[:-1]] = most_common_tag
     return attributes
-
 
 def format(text):
     output = ""
